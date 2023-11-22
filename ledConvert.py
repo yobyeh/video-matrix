@@ -18,17 +18,17 @@ import copy
 #start bottom right going up zigzag 'C'
 #start top right going down zigzag  'D'
 #leave as default processed layout  'X'
-signal_shape = 'A'
+signal_shape = 'C'
 
 print(sys.argv)
 print("hello")
 
 # File names and settings
-name = "triangle"
-file = "triangle-10.mkv"
-output = "triangle-10.mp4"
+name = "candle"
+file = "{}.mkv".format(name)
+output = "{}.mp4".format(name)
 height = 50
-width = 10
+width = 14
 fps = 5
 
 def convert_to_signal_shape(led_data):
@@ -85,13 +85,29 @@ def convert_to_signal_shape(led_data):
                 transformed_led_data.append(new_frame)
             return transformed_led_data
         case 'C':
-            print("C")
+            transformed_led_data = []
+            for frame in led_data:
+                transformed_frame = [None] * len(frame)
+                for pixel_number, pixel in enumerate(frame):
+                    new_pixel_number = get_new_pixel_number(pixel_number, width, height)
+                    transformed_frame[new_pixel_number] = pixel
+                transformed_led_data.append(transformed_frame)
+            return transformed_led_data
         case 'D':
             print("D")
         case 'X':
             print("X")
         case _:
             print("Signal shape error")        
+
+def get_new_pixel_number(old_number, width, height):
+    column_number = (old_number % width) + 1
+    row_number = (old_number // width) + 1
+                
+    if(column_number % 2 == 0):
+        return ((column_number - 1) * height) + (row_number - 1)
+    else:
+        return (column_number * height) - row_number
 
 
 if __name__ == "__main__":
@@ -100,7 +116,12 @@ if __name__ == "__main__":
         input_stream = ffmpeg.input("inputVideos/{}".format(file))
 
         # Applying filters: resize and set FPS
-        processed_video = input_stream.video.filter('scale', width, height).filter('fps', fps=fps)
+        processed_video = (
+            input_stream.video
+            .filter('scale', width, height)
+            .filter('fps', fps=fps)
+            .filter('unsharp', luma_msize_x=7, luma_msize_y=7, luma_amount=2.5)
+        )
 
         # Output stream (without audio)
         output_stream = ffmpeg.output(processed_video, "outputVideos/{}".format(output), an=None)
@@ -133,13 +154,14 @@ if __name__ == "__main__":
             for y in range(height):
                 for x in range(width):
 
-
+                    #switched from hex to rgb had to add leading zeros to keep same number of bits
                     r, g, b = img.getpixel((x, y))
-                    hex_color = '0x{:02X}{:02X}{:02X}'.format(r, g, b)
-                    frame_data.append(hex_color)
+                    reformat =  '{:03d},{:03d},{:03d}'.format(r, g, b)
+                    #hex_color = '0x{:02X}{:02X}{:02X}'.format(r, g, b)
+                    frame_data.append(reformat)
 
             led_data.append(frame_data)
-        
+          
 
     new_led_data = convert_to_signal_shape(led_data)
 
